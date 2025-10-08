@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>お絵かきソフト（保存機能付き）</title>
+  <style>
+    canvas {
+      border: 1px solid #000;
+      touch-action: none; 
+      cursor: crosshair;
+    }
+    button {
+      margin-top: 10px;
+      margin-right: 10px; 
+    }
+    /* アクティブなボタンのスタイル */
+    #drawButton.active, #eraserButton.active {
+        background-color: #ccc;
+    }
+  </style>
+</head>
+<body>
+  <h1>お絵かきソフト（保存機能付き）</h1>
+  <canvas id="drawingCanvas" width="800" height="600"></canvas>
+  <br>
+  <button id="drawButton" class="active">ペン</button> 
+  <button id="eraserButton">消しゴム</button>
+  <button id="clearButton">クリア</button>
+  <button id="saveButton">画像を保存</button> <script>
+    const canvas = document.getElementById('drawingCanvas');
+    const ctx = canvas.getContext('2d');
+    const clearButton = document.getElementById('clearButton');
+    const drawButton = document.getElementById('drawButton');
+    const eraserButton = document.getElementById('eraserButton');
+    const saveButton = document.getElementById('saveButton'); // 新しいボタンの要素
+    
+    let isDrawing = false;
+    
+    // 描画設定
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#000';
+
+    // --- 座標取得ヘルパー関数 ---
+    function getCanvasCoordinates(event) {
+        const clientX = event.clientX || event.touches[0].clientX;
+        const clientY = event.clientY || event.touches[0].clientY;
+        const rect = canvas.getBoundingClientRect();
+        
+        return {
+            x: clientX - rect.left,
+            y: clientY - rect.top
+        };
+    }
+
+    // --- 消しゴムモードの設定 ---
+    function setEraserMode() {
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.lineWidth = 12;
+      drawButton.classList.remove('active');
+      eraserButton.classList.add('active');
+    }
+
+    // --- ペンモードの設定 ---
+    function setDrawMode() {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#000';
+      drawButton.classList.add('active');
+      eraserButton.classList.remove('active');
+    }
+
+    // --- 画像保存機能 ---
+function saveImage() {
+    // 1. **現在のキャンバスの状態を一時的に保存**
+    //    （保存処理中に描画設定や内容を一時的に変更するため）
+    ctx.save();
+    
+    // 2. **白い背景を作成**
+    //    clearRect()で消去された（透明な）部分を白で塗りつぶすための処理
+    
+    //    a. 合成モードをデフォルトに戻す（描画が上書きされるように）
+    ctx.globalCompositeOperation = 'destination-over';
+    
+    //    b. 白い長方形でキャンバス全体を塗りつぶす
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // 3. **画像データを取得**
+    const dataURL = canvas.toDataURL('image/png');
+    
+    // 4. **一時的に変更したキャンバスの状態を元に戻す**
+    //    （描画設定と背景を元に戻すことで、お絵かきソフトの現在の状態を維持）
+    ctx.restore();
+    
+    // 5. **ダウンロード処理**
+    const a = document.createElement('a');
+    a.download = 'my_drawing.png';
+    a.href = dataURL; 
+    
+    document.body.appendChild(a);
+    a.click();
+    
+    document.body.removeChild(a);
+}
+    
+    // 初期状態をペンモードに設定
+    setDrawMode();
+
+    // --- イベントリスナーの登録 ---
+    drawButton.addEventListener('click', setDrawMode);
+    eraserButton.addEventListener('click', setEraserMode);
+    clearButton.addEventListener('click', () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    });
+    
+    // 【追加】保存ボタンのクリックイベント
+    saveButton.addEventListener('click', saveImage);
+
+    function startDrawing(e) {
+      e.preventDefault();
+      isDrawing = true;
+      const { x, y } = getCanvasCoordinates(e);
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+    }
+
+    function draw(e) {
+      if (!isDrawing) return;
+      e.preventDefault();
+      const { x, y } = getCanvasCoordinates(e);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+    }
+
+    function stopDrawing() {
+      isDrawing = false;
+      ctx.closePath();
+    }
+
+    // マウスイベント (PC用)
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('mouseout', stopDrawing);
+
+    // タッチイベント (スマホ・タブレット用)
+    canvas.addEventListener('touchstart', startDrawing);
+    canvas.addEventListener('touchmove', draw);
+    canvas.addEventListener('touchend', stopDrawing);
+    canvas.addEventListener('touchcancel', stopDrawing);
+  </script>
+</body>
+</html>
